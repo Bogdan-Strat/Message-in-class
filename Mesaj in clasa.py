@@ -297,10 +297,10 @@ class Problema:
             
             succesors = nod_curent.expandeaza()
             self.open.pop(0)
-            self.close.append(nod_curent)
+            #self.close.append(nod_curent)
             print(succesors)
 
-            if nod_curent.test_scop() ==True:
+            if nod_curent.test_scop() == True:
                 print("Nod scop")
                 path = self.getPath(nod_curent)
 
@@ -327,7 +327,63 @@ class Problema:
                     self.open.append(NodParcurgere(student, nod_curent,0,g, direction))
 
             
+    def simulationDFS(self):
+        np_start = NodParcurgere(start_student, -1, 0, 0)
+        cnt = 0
+        
+        #visited_dict is a dictionary use to mark the succesors visited for each node
+        visited_dict = {}
+        for row in classroom_config:
+            for student in row:
+                visited_dict[student] = []
 
+
+        self.open.append(np_start)
+        self.listen_list = ascultati
+
+        while self.open != [] and cnt<1000:
+            cnt += 1
+            nod_curent = self.open[len(self.open) - 1]
+            self.listenStudent(nod_curent.g)
+
+            print('Nodul curent este: ', nod_curent.node)
+            succesors = nod_curent.expandeaza()
+            self.open.pop()
+
+            if nod_curent.test_scop() == True:
+                print('Nod scop')
+
+                path = self.getPath(nod_curent)
+
+                path = path[::-1]
+
+                self.paths.append(path)
+
+            print(succesors)
+            for student in succesors:
+                g = getCostMove(nod_curent.node, student)
+                direction = getDirection(nod_curent.node, student)
+
+                ok = 0
+                #verify if the succesor is not in stack(open list)
+                #or succesors was not treated by the current node until now
+                if student.name in visited_dict[nod_curent.node.name]:
+                    ok = 1
+                
+                #for open_node in self.open:
+                #    if open_node.node.name == student.name:
+                #        ok = 1
+                
+                if ok == 0:
+                    # mark succesor as visited
+                    visited_dict[nod_curent.node.name].append(student.name)
+                    visited_dict[student.name].append(nod_curent.node.name)
+                    self.open.append(NodParcurgere(student, nod_curent, 0, g, direction))
+            
+            print(visited_dict)
+            for node in self.open:
+                print(node.node.name, end= " ")
+            print('\n')
 
 
 if __name__=="__main__":
@@ -369,11 +425,21 @@ if __name__=="__main__":
     bfs.simulationBFS()
     print(len(bfs.paths))
 
-    #print(getCostMove(Nod('mihai'), Nod('nadia')))
     for i in range(len(bfs.paths)):
         print('Path number: %d' % i)
         for j in range(len(bfs.paths[i])):
             print(bfs.paths[i][j][1], bfs.paths[i][j][0], end = ' ')
+        print('\n')
+
+    dfs = Problema()
+    print(dfs.open)
+    dfs.simulationDFS()
+    print(len(dfs.paths))
+
+    for i in range(len(dfs.paths)):
+        print('Path number: %d' % i)
+        for j in range(len(dfs.paths[i])):
+            print(dfs.paths[i][j][1], dfs.paths[i][j][0], end = ' ')
         print('\n')
 
 
