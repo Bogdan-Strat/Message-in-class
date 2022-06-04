@@ -1,4 +1,9 @@
+from http.client import FOUND, NOT_FOUND
+import math
+import os
 from platform import java_ver
+from re import T
+import sys
 
 
 def getCostMove(student_nod1, student_nod2):
@@ -36,9 +41,19 @@ def getDirection(student_nod1, student_nod2):
     return '^'
 
 class Nod:
-    def __init__(self,name):
+    def __init__(self, name, heuristic = 1):
         self.name = name
-        self.euristicaBanala()
+        self.heuristic = heuristic
+
+        if heuristic == 0:
+            self.euristicaBanala()
+        elif heuristic == 1:
+            self.euristica1()
+        elif heuristic == 2:
+            self.euristica2()
+        else:
+            self.euristicaInadmisibila()
+
         self.setPosition()
 
     def setPosition(self):
@@ -62,6 +77,23 @@ class Nod:
 
     #TODO euristici
     def euristicaBanala(self):
+        if self.name == final_node:
+            self.h = 0
+        else:
+            #search for the positin of the student_node
+            for i in range(len(classroom_config)):
+                for j in range(len(classroom_config[i])):
+                    if classroom_config[i][j] == self.name:
+                        i_student_node = i
+                        j_student_node = j
+                    elif classroom_config[i][j] == final_node:
+                        i_student_scope = i
+                        j_student_scope = j
+
+
+            self.h = abs(i_student_node - i_student_scope) + abs(j_student_node - j_student_scope)
+
+    def euristica1(self):
         #if the student is the scope student
         if self.name == final_node:
             self.h = 0 
@@ -125,6 +157,42 @@ class Nod:
 
             self.h = distance
     
+    def euristica2(self):
+        #if the student is the scope student
+        if self.name == final_node:
+            self.h = 0 
+
+        else:
+            distance = 0
+        #search for the positin of the student_node
+            for i in range(len(classroom_config)):
+                for j in range(len(classroom_config[i])):
+                    if classroom_config[i][j] == self.name:
+                        i_student_node = i
+                        j_student_node = j
+                    elif classroom_config[i][j] == final_node:
+                        i_student_scope = i
+                        j_student_scope = j
+
+            self.h = (i_student_node - i_student_scope)*(i_student_node - i_student_scope) + (j_student_node - j_student_scope)*(j_student_node - j_student_scope)
+            self.h = math.sqrt(self.h)
+
+    def euristicaInadmisibila(self):
+        if self.name == final_node:
+            self.h = 0 
+
+        else:
+            distance = 0
+        #search for the positin of the student_node
+            for i in range(len(classroom_config)):
+                for j in range(len(classroom_config[i])):
+                    if classroom_config[i][j] == self.name:
+                        i_student_node = i
+                        j_student_node = j
+                    elif classroom_config[i][j] == final_node:
+                        i_student_scope = i
+                        j_student_scope = j
+
     def __repr__(self):
         return f"{self.name},{self.h},i: {self.i},j: {self.j}"
 
@@ -385,37 +453,277 @@ class Problema:
                 print(node.node.name, end= " ")
             print('\n')
 
+    def simulationIDF(self, max_depth):
+        np_start = NodParcurgere(start_student, -1, 0 , 0)
+        for i in range(max_depth):
+            found, remaining = self.DLS(np_start, i)
+            if found != 'null':
+                path = self.getPath(found)
+                path = path[::-1]
+                self.paths.append(path)
 
+                #return found
+
+            elif not remaining:
+                return 'null'
+
+    def DLS(self, nod_curent, depth):
+        if depth == 0:
+            if nod_curent.test_scop() == True:
+                return (nod_curent, True)
+            else:
+                return ('null', True)
+
+        elif depth > 0:
+            any_remaining = False
+            succesors = nod_curent.expandeaza()
+            
+            for successor in succesors:
+                g = getCostMove(nod_curent.node, successor)
+                direction = getDirection(nod_curent.node, successor)
+                found, remaining = self.DLS(NodParcurgere(successor, nod_curent, 0, g, direction), depth - 1)
+
+                if found != 'null':
+                    return (found, True)
+                if remaining:
+                    any_remaining = True
+
+            return ('null', any_remaining)
+
+    def simulationAStar(self, ways):
+        no_solutions = 0
+        np_start = NodParcurgere(start_student, -1, 0, 0)
+        self.open.append(np_start)
+        cnt = 0 
+        self.listen_list = ascultati
+
+        while self.open != [] and cnt < 10000:
+            cnt += 1
+            self.open.sort(key = lambda elem : (elem.f, -elem.g))
+            nod_curent = self.open[0]
+            self.listenStudent(nod_curent.g)
+            
+            succesors = nod_curent.expandeaza()
+            self.open.pop(0)
+            #self.close.append(nod_curent)
+            print(succesors)
+
+            if nod_curent.test_scop() == True:
+                print("Nod scop")
+                no_solutions += 1
+
+                path = self.getPath(nod_curent)
+
+                path = path[::-1]
+                #for i in range(len(path)):
+                #   print(path[i][1],path[i][0],sep=" ")
+
+                self.paths.append(path)
+
+                if no_solutions == ways:
+                    return True
+            
+            for student in succesors:
+                g = getCostMove(nod_curent.node, student)
+                direction = getDirection(nod_curent.node, student)
+                
+                #verify if the student is already in close list
+                ok = 0
+                path = self.getPath(nod_curent)
+
+                for node in path:
+                    if node[0] ==  student.name:
+                        ok = 1
+                
+                #if student was not visited yet(is not in close)
+                if ok == 0:
+                    g_final = nod_curent.g + g
+                    self.open.append(NodParcurgere(student, nod_curent,0, g_final, direction))
+
+    def simulationAStarOptimised(self):
+        np_start = NodParcurgere(start_student, -1, 0, 0)
+        self.open.append(np_start)
+        cnt = 0
+        self.listen_list = ascultati
+        
+        while self.open != [] and cnt <10000:
+            self.open.sort(key = lambda elem : (elem.f, -elem.g))
+            nod_curent = self.open[0]
+            self.listenStudent(nod_curent.g)
+
+
+            self.open.pop(0)
+            self.close.append(nod_curent)
+
+            if nod_curent.test_scop() == True:
+                path = self.getPath(nod_curent)
+                path = path[::-1]
+                self.paths.append(path)
+                return True
+            
+            succesors = nod_curent.expandeaza()
+
+            for student in succesors:
+                nod_nou = None
+                ok = 0
+
+                path = self.getPath(nod_curent)
+                for nod_drum in path:
+                    if nod_drum[0] == student.name:
+                        ok = 1
+                        break
+                
+                if ok == 0:
+                    yes_open = 0
+                    yes_close = 0
+                    g = getCostMove(nod_curent.node, student)
+                    direction = getDirection(nod_curent.node, student)
+                    
+                    for open_node in self.open:
+                        if open_node.node.name == student.name:
+                            if nod_curent.g + g  + student.h < open_node.f:
+                                yes_open = 1
+                                self.open.remove(open_node)
+                                g_final = nod_curent.g + g
+                                nod_nou = NodParcurgere(student, nod_curent, 0, g_final, direction)
+
+                    for close_node in self.close:
+                        if close_node.node.name == student.name:
+                            if nod_curent.g + g + student.h < close_node.f:
+                                yes_close = 1
+                                self.close.remove(close_node)
+                                g_final = nod_curent.g + g
+                                nod_nou = NodParcurgere(student, nod_curent, 0 , g_final, direction)
+
+                    if nod_nou != None:
+                        self.open.append(nod_nou)
+                    elif yes_open == 0 and yes_close == 0:
+                        g_final = nod_curent.g + g
+                        nod_nou = NodParcurgere(student, nod_curent, 0 , g_final, direction)
+                        self.open.append(nod_nou)
+        return False
+
+    def simulateIDAStar(self):
+        np_start = NodParcurgere(start_student, -1,0, 0)
+        bound = np_start.node.h
+        path = [np_start]
+
+        while True:
+            t = self.search(path, 0, bound)
+            if t == 'found':
+                return (path, bound)
+            if t == float('inf'):
+                return 'not found'
+
+            bound = T
+    
+    def search(self, path, g, bound):
+        nod_curent = path[len(path) - 1]
+        f = g + nod_curent.node.h
+
+        if f > bound:
+            return f
+        if nod_curent.test_scop() == True:
+            return 'found'
+
+        min = float('inf')
+
+        succesors = nod_curent.expandeaza()
+
+        for succesor in succesors:
+            if succesor not in path:
+                g_move = getCostMove(nod_curent.node, succesor)
+                direction = getDirection(nod_curent.node, succesor)
+
+                path.append(NodParcurgere(succesor, nod_curent, 0, g + g_move, direction))
+                t = self.search(path, g + g_move, bound)
+                if t == 'found':
+                    return 'found'
+                if t < min:
+                    min = t 
+                path.pop()
+        
+        return min
+
+def readData(file):
+    f = open(file, 'r')
+    
+    cnt = 0
+    suparati = []
+    classroom_config = []
+    ascultati = []
+    start_node = ""
+    final_node = ""
+    for line in f.readlines():
+        if cnt == 0 and line != 'suparati\n':
+            aux = []
+            line = line.split()
+            for student in line:
+                aux.append(student)
+            #g1.write(aux)    
+            classroom_config.append(aux)
+
+        elif line == 'suparati\n':
+            cnt += 1
+        
+        elif cnt == 1 and line != 'ascultati\n':
+            aux1 = []
+            line = line.split()
+            aux1.append(line[0])
+            aux1.append(line[1])
+            suparati.append(aux1)
+
+        elif line == 'ascultati\n':
+            cnt += 1
+
+        elif cnt == 2 and line != 'mesaj\n':
+            aux = []
+            line = line.split()
+            aux.append(line[0])
+            aux.append(int(line[1]))
+            ascultati.append(aux)
+
+        elif line == 'mesaj\n':
+            cnt += 1
+        
+        elif cnt == 3:
+            line = line.split()
+            start_node = line[0]
+            final_node = line[1]
+    print(cnt)
+    return classroom_config, suparati, ascultati, start_node, final_node    
 if __name__=="__main__":
+    #inputFolder = sys.argv[1]
+    #outputFolder = sys.argv[2]
+    #noSolutions = int(sys.argv[3])
+    #timeout = int(sys.argv[4])
+
     global classroom_config
-    classroom_config = [['ionel', 'alina', 'teo', 'eliza', 'carmen', 'monica'],
-                          ['george', 'diana', 'bob', 'liber', 'nadia', 'mihai'],
-                          ['liber', 'costin', 'anda', 'bogdan', 'dora', 'marin'],
-                          ['luiza', 'simona', 'dana', 'cristian', 'tamara', 'dragos'],
-                          ['mihnea', 'razvan', 'radu', 'patricia', 'gigel', 'elena'],
-                          ['liber', 'andrei' , 'oana', 'victor', 'liber', 'dorel'],
-                          ['viorel', 'alex', 'ela', 'nicoleta', 'maria', 'gabi']]
 
     global suparati
-    suparati = [['ionel', 'george'],
-                ['teo', 'eliza'],
-                ['teo', 'luiza'],
-                ['oana', 'victor'],
-                ['ela', 'nicoleta'],
-                ['dragos','alina'],
-                ['dragos', 'elena']]
 
-    global ascultati 
-    ascultati = [['monica', 4],
-                 ['maria', 1]]
+    global ascultati
 
     global start_node
-    start_node = 'ionel'
 
     global final_node  
-    final_node = 'dragos'
+    g1 = open("/home/bogdan/Downloads/Tema1/f1.txt", 'w')
+    '''
+    for file in os.listdir(inputFolder):
+        fileName = inputFolder + '/' + file
+        g1.write(fileName)
+        classroom_config, suparati, ascultati, start_node, final_node = readData(fileName)
+    '''
+    classroom_config, suparati, ascultati, start_node, final_node = readData("/home/bogdan/Downloads/Tema1/input/exemplu.txt")
+    print(suparati)
+
 
     #testing zone
+
+    
+    g2 = open("/home/bogdan/Downloads/Tema1/f2.txt", 'w')
+    g3 = open("/home/bogdan/Downloads/Tema1/f3.txt", 'w')
+    global start_student
     start_student = Nod(start_node)
     nodParcurgere = NodParcurgere(start_student,-1,0,0)
     print(nodParcurgere.expandeaza())
@@ -426,11 +734,11 @@ if __name__=="__main__":
     print(len(bfs.paths))
 
     for i in range(len(bfs.paths)):
-        print('Path number: %d' % i)
+        g1.write('Path number: %d' % i)
         for j in range(len(bfs.paths[i])):
-            print(bfs.paths[i][j][1], bfs.paths[i][j][0], end = ' ')
-        print('\n')
-
+            g1.write(bfs.paths[i][j][1] + ' ' +  bfs.paths[i][j][0])
+        g1.write('\n')
+    '''
     dfs = Problema()
     print(dfs.open)
     dfs.simulationDFS()
@@ -442,7 +750,39 @@ if __name__=="__main__":
             print(dfs.paths[i][j][1], dfs.paths[i][j][0], end = ' ')
         print('\n')
 
+    print('A*')
+    aStarOptimised = Problema()
+    aStarOptimised.simulationAStarOptimised()
+    for i in range(len(aStarOptimised.paths)):
+        print('Path number: %d' % i)
+        for j in range(len(aStarOptimised.paths[i])):
+            print(aStarOptimised.paths[i][j][1], aStarOptimised.paths[i][j][0], end = ' ')
+        print('\n')
 
+    print('A* neoptimizat')
+    aStar  = Problema()
+    aStar.simulationAStar(5)
+    for i in range(len(aStar.paths)):
+        g2.write('Path number: %d' % i)
+        for j in range(len(aStar.paths[i])):
+            g2.write(aStar.paths[i][j][1] + ' ' + aStar.paths[i][j][0])
+        g2.write('\n')
+
+
+    print('dfi')
+    dfi = Problema()
+    dfi.simulationIDF(15)
+    for i in range(len(dfi.paths)):
+        g3.write('Path number: %d' % i)
+        for j in range(len(dfi.paths[i])):
+            g3.write(dfi.paths[i][j][1] + ' ' + dfi.paths[i][j][0])
+        g3.write('\n')
+
+    print('ida*')
+    idaStar = Problema()
+    print(idaStar.simulateIDAStar())
+    '''
+    #TODO wait feature in case that the ticket can't be passed
 
 
 
